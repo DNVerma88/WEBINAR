@@ -1,0 +1,37 @@
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+
+# .NET / Backend
+backend/src/**/bin/
+backend/src/**/obj/
+backend/publish/
+*.user
+*.suo
+.vs/
+
+# Environment & secrets
+.env
+.env.*
+appsettings.Development.json
+**/appsettings.Development.json
+
+# Docker
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Uploads (runtime data)
+backend/src/KnowHub.Api/uploads/
+
+# Test results
+TestResults/
+coverage/

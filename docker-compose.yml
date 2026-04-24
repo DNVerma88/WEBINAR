@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: knowhub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: knowhub_dev
+      POSTGRES_USER: knowhub
+      POSTGRES_PASSWORD: knowhub_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - knowhub_pgdata:/var/lib/postgresql/data
+      - ./database/sql/001_Init.sql:/docker-entrypoint-initdb.d/001_Init.sql:ro
+      - ./database/sql/002_Seed.sql:/docker-entrypoint-initdb.d/002_Seed.sql:ro
+      - ./database/sql/003_Phase2.sql:/docker-entrypoint-initdb.d/003_Phase2.sql:ro
+      - ./database/sql/004_Cohorts.sql:/docker-entrypoint-initdb.d/004_Cohorts.sql:ro
+      - ./database/sql/005_AddPhase3Features.sql:/docker-entrypoint-initdb.d/005_AddPhase3Features.sql:ro
+      - ./database/sql/006_AIAssessmentModule.sql:/docker-entrypoint-initdb.d/006_AIAssessmentModule.sql:ro
+      - ./database/sql/007_WorkRoles.sql:/docker-entrypoint-initdb.d/007_WorkRoles.sql:ro
+      - ./database/sql/008_GeneralizeAssessmentModule.sql:/docker-entrypoint-initdb.d/008_GeneralizeAssessmentModule.sql:ro
+      - ./database/sql/009_MissingIndexes.sql:/docker-entrypoint-initdb.d/009_MissingIndexes.sql:ro
+      - ./database/sql/009_TalentModule.sql:/docker-entrypoint-initdb.d/009b_TalentModule.sql:ro
+      - ./database/sql/010_AddAchievements.sql:/docker-entrypoint-initdb.d/010_AddAchievements.sql:ro
+      - ./database/sql/011_SurveyModule.sql:/docker-entrypoint-initdb.d/011_SurveyModule.sql:ro
+      - ./database/sql/012_SurveyAnalytics.sql:/docker-entrypoint-initdb.d/012_SurveyAnalytics.sql:ro
+      - ./database/sql/013_FixRatingConstraint.sql:/docker-entrypoint-initdb.d/013_FixRatingConstraint.sql:ro
+      - ./database/sql/014_AddSurveyEndsAt.sql:/docker-entrypoint-initdb.d/014_AddSurveyEndsAt.sql:ro
+      - ./database/sql/015_AddPromptTemplate.sql:/docker-entrypoint-initdb.d/015_AddPromptTemplate.sql:ro
+      - ./database/sql/016_DevCommunityEnhancement.sql:/docker-entrypoint-initdb.d/016_DevCommunityEnhancement.sql:ro
+      - ./database/sql/017_Phase2_FeedAndModeration.sql:/docker-entrypoint-initdb.d/017_Phase2_FeedAndModeration.sql:ro
+      - ./database/sql/018_PerformanceFixes.sql:/docker-entrypoint-initdb.d/018_PerformanceFixes.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U knowhub -d knowhub_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: src/KnowHub.Api/Dockerfile
+    container_name: knowhub-api
+    restart: unless-stopped
+    ports:
+      - "5200:8080"
+    volumes:
+      - knowhub_uploads:/app/uploads
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=knowhub_dev;Username=knowhub;Password=knowhub_secret
+      - Jwt__Key=super-secret-jwt-key-for-dev-change-in-prod!
+      - Jwt__Issuer=KnowHub
+      - Jwt__Audience=KnowHub
+      - Jwt__ExpiryMinutes=60
+      - Jwt__RefreshTokenExpiryDays=7
+      - Cors__FrontendOrigin=*
+      - Survey__FrontendBaseUrl=https://whitefly-nonarresting-angla.ngrok-free.dev
+      - Redis__ConnectionString=redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: knowhub-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: knowhub-frontend
+    restart: unless-stopped
+    ports:
+      - "80:8080"
+    depends_on:
+      - api
+
+volumes:
+  knowhub_pgdata:
+  knowhub_uploads:

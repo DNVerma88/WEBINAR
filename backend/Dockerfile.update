@@ -1,0 +1,2 @@
+FROM webinar-api:latest
+COPY ./publish /app
